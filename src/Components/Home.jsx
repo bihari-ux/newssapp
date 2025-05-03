@@ -10,44 +10,60 @@ const Home = (props) => {
   const [isLoading, setIsLoading] = useState(false); // Track loading state
   const location = useLocation(); // This will help track route change
 
+  const API_KEY = "807d700957354e9794ec9a60f0d7d8bc"; // Your API key
+
+  const apiUrl = `https://newsapi.org/v2/everything?q=${
+    props.search || props.q
+  }&language=${
+    props.language
+  }&pagesize=24&sortBy=publishedAt&apiKey=${API_KEY}`;
+
   // Fetch Data based on the route and query parameter (q)
   const getAPIData = async () => {
     setPage(1); // Reset page number when new category or query comes
     setIsLoading(true); // Start loading
-    let response = await fetch(
-      `https://newsapi.org/v2/everything?q=${
-        props.search ? props.search : props.q
-      }&language=${
-        props.language
-      }&pagesize=24&page=1&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
-    );
-    response = await response.json();
-    if (response.status === "ok") {
-      setArticles(response.articles.filter((x) => x.title !== "[Removed]"));
-      setTotalResults(response.totalResults);
+
+    try {
+      let response = await fetch(`${apiUrl}&page=1`);
+      response = await response.json();
+
+      if (response.status === "ok") {
+        setArticles(response.articles.filter((x) => x.title !== "[Removed]"));
+        setTotalResults(response.totalResults);
+      } else {
+        console.error("Failed to fetch data: ", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+    } finally {
+      setIsLoading(false); // Stop loading
     }
-    setIsLoading(false); // Stop loading
   };
 
   // Fetch more data when user scrolls
   const fetchData = async () => {
-    setPage(page + 1);
+    if (isLoading || articles.length >= totalResults) return; // Prevent fetch when loading or no more data
+
     setIsLoading(true); // Start loading
-    let response = await fetch(
-      `https://newsapi.org/v2/everything?q=${
-        props.search ? props.search : props.q
-      }&language=${props.language}&pagesize=24&page=${
-        page + 1
-      }&sortBy=publishedAt&apiKey=807d700957354e9794ec9a60f0d7d8bc`
-    );
-    response = await response.json();
-    if (response?.status === "ok") {
-      setArticles((prevArticles) => [
-        ...prevArticles,
-        ...response.articles.filter((x) => x.title !== "[Removed]"),
-      ]);
+    setPage(page + 1);
+
+    try {
+      let response = await fetch(`${apiUrl}&page=${page + 1}`);
+      response = await response.json();
+
+      if (response.status === "ok") {
+        setArticles((prevArticles) => [
+          ...prevArticles,
+          ...response.articles.filter((x) => x.title !== "[Removed]"),
+        ]);
+      } else {
+        console.error("Failed to fetch more data: ", response.message);
+      }
+    } catch (error) {
+      console.error("Error fetching more data: ", error);
+    } finally {
+      setIsLoading(false); // Stop loading
     }
-    setIsLoading(false); // Stop loading
   };
 
   // Using useEffect to trigger API call when route or props.q changes
